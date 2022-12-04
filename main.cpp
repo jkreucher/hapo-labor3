@@ -18,7 +18,7 @@
 #define PIN_BUZZER  PB_3
 
 
-// 7 segment display data
+/*** 7 segment display data ***/
 //  0bHGFEDCBA active low
 const uint16_t segment_data[17] = {
     //HGFEDCBAxxxx1234
@@ -61,7 +61,7 @@ uint8_t bDisplayValues[4] = {16, 16, 16, 16}; // display values for each digit
 
 Ticker tMainUpdate;
 
-// Input / Output
+/*** Input / Output ***/
 //BusOut busLeds(PIN_LED1, PIN_LED2, PIN_LED3, PIN_LED4);
 BusOut busLeds(PIN_LED4, PIN_LED3, PIN_LED2, PIN_LED1);
 DigitalIn pinSW1(PIN_SW1);
@@ -117,7 +117,6 @@ void vShiftOut(uint16_t wData) {
 
 
 void vDisplayUpdate() {
-
     if(bDisplayPoint == bDisplayDigit)
         vShiftOut(segment_digit[bDisplayDigit] | segment_data[bDisplayValues[bDisplayDigit]] & ~(1 << 15));
     else
