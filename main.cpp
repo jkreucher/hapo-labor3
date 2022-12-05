@@ -23,6 +23,7 @@
 #define PIN_LED3    PA_6
 #define PIN_LED4    PA_5
 #define PIN_BUZZER  PB_3
+#define PIN_POTI    A0
 
 // user parameters (times 2.5ms)
 #define BUTTON_LONG     200
@@ -70,7 +71,6 @@ enum eDisplayMode {
 /*** global vars ***/
 // main vars
 volatile uint8_t bMainUpdate = 0;
-
 // display vars
 uint8_t bDisplayDigit = 0;
 uint8_t bDisplayPoint = 4; // decimal point place (4 for none)
@@ -105,11 +105,11 @@ DigitalOut pinDOUT(PIN_DOUT);
 DigitalOut pinSCLK(PIN_SCLK);
 DigitalOut pinLTCH(PIN_LTCH);
 DigitalOut pinBuzzer(PIN_BUZZER);
-AnalogIn pinPot(A0);
+AnalogIn pinPot(PIN_POTI);
 BufferedSerial serialPort(USBTX, USBRX);
 
 
-// prototypes
+/*** Prototypes ***/
 void vMainUpdate();
 void vShiftOut(uint16_t wData);
 void vDisplayUpdate();
@@ -134,7 +134,6 @@ int main() {
 
     while(1) {
         // check serial port
-        
         if(uint32_t num = serialPort.read(serialBuffer, sizeof(serialBuffer)) > 0) {
             // write back
             switch(serialBuffer[0]) {
@@ -153,7 +152,7 @@ int main() {
                     // change state to settings
                     bDisplayState = StateSettings;
                     // increment setpoint
-                    if(wAdcSetpoint < 3300) wAdcSetpoint += 100;
+                    if(wAdcSetpoint < 3300) wAdcSetpoint += 10;
                     else wAdcSetpoint = 3300;
                     break;
 
@@ -161,7 +160,7 @@ int main() {
                     // change state to settings
                     bDisplayState = StateSettings;
                     // decrement setpoint
-                    if(wAdcSetpoint > 0) wAdcSetpoint -= 100;
+                    if(wAdcSetpoint > 0) wAdcSetpoint -= 10;
                     else wAdcSetpoint = 0;
                     break;
             }
@@ -285,15 +284,18 @@ void vCheckButtons() {
             }
             if(bSW2_Timer == BUTTON_LONG) {
                 // event: long press
-                bButtonUpEnable = 1;
+                if(bDisplayState == StateSettings)
+                    bButtonUpEnable = 1;
             }
             bSW2_Timer++;
         } 
     } else {
         if((bSW2_Timer >= BUTTON_SHORT) && (bSW2_Timer <= BUTTON_LONG)) {
             // event: released from short
-            if(wAdcSetpoint < 3300) wAdcSetpoint += 10;
-            else wAdcSetpoint = 3300;
+            if(bDisplayState == StateSettings) {
+                if(wAdcSetpoint < 3300) wAdcSetpoint += 10;
+                else wAdcSetpoint = 3300;
+            }
         }
         if(bSW2_Timer > BUTTON_LONG) {
             // event: released from long
@@ -310,15 +312,18 @@ void vCheckButtons() {
             }
             if(bSW3_Timer == BUTTON_LONG) {
                 // event: long press
-                bButtonDownEnable = 1;
+                if(bDisplayState == StateSettings)
+                    bButtonDownEnable = 1;
             }
             bSW3_Timer++;
         } 
     } else {
         if((bSW3_Timer >= BUTTON_SHORT) && (bSW3_Timer <= BUTTON_LONG)) {
             // event: released from short
-            if(wAdcSetpoint > 0) wAdcSetpoint -= 10;
-            else wAdcSetpoint = 0;
+            if(bDisplayState == StateSettings) {
+                if(wAdcSetpoint > 0) wAdcSetpoint -= 10;
+                else wAdcSetpoint = 0;
+            }
         }
         if(bSW3_Timer > BUTTON_LONG) {
             // event: released from long
