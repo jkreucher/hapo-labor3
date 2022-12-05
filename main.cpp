@@ -1,3 +1,10 @@
+/* HAPO Labor Versuch 3
+ * ********************
+ *
+ * Jannik Kreucher
+ * Benedikt Wendling
+ */
+
 #include "mbed.h"
 #include <cstdint>
 
@@ -72,8 +79,8 @@ uint8_t bDisplayState = StateCompare;
 uint16_t wDecimalCounter = 0;
 // adc stuff
 int16_t wAdcValue = 0;
-int16_t wAdcSetpoint = 0;
-uint8_t bAdcEnableCompare = 1;
+int16_t wAdcSetpoint = 1600;
+uint8_t bAdcEnableCompare = 0;
 // buttons
 uint16_t bSW1_Timer = 0;
 uint16_t bSW2_Timer = 0;
@@ -82,6 +89,8 @@ uint8_t bButtonUpEnable = 0;
 uint16_t bButtonUpCounter = 0;
 uint8_t bButtonDownEnable = 0;
 uint16_t bButtonDownCounter = 0;
+// serial port
+char serialBuffer[16];
 
 
 Ticker tMainUpdate;
@@ -97,6 +106,7 @@ DigitalOut pinSCLK(PIN_SCLK);
 DigitalOut pinLTCH(PIN_LTCH);
 DigitalOut pinBuzzer(PIN_BUZZER);
 AnalogIn pinPot(A0);
+BufferedSerial serialPort(USBTX, USBRX);
 
 
 // prototypes
@@ -112,17 +122,58 @@ int main() {
     busLeds = 0xF;
     pinBuzzer = 1;
     // default state
-    bDisplayState = StateSettings;
+    bDisplayState = StateCompare;
+
+    // serial setup
+    serialPort.set_baud(115200);
+    serialPort.set_format(8, BufferedSerial::None, 1); // 8n1
+    serialPort.set_blocking(false);
+
     // main update interrupt
     tMainUpdate.attach(&vMainUpdate, 2500us);
 
     while(1) {
+        // check serial port
+        
+        if(uint32_t num = serialPort.read(serialBuffer, sizeof(serialBuffer)) > 0) {
+            // write back
+            switch(serialBuffer[0]) {
+                case 'a':
+                    // change state to compare
+                    bDisplayState = StateCompare;
+                    // enable/disable compare
+                    if(bAdcEnableCompare) {
+                        bAdcEnableCompare = 0;
+                    } else {
+                        bAdcEnableCompare = 1;
+                    }
+                    break;
+
+                case '+':
+                    // change state to settings
+                    bDisplayState = StateSettings;
+                    // increment setpoint
+                    if(wAdcSetpoint < 3300) wAdcSetpoint += 100;
+                    else wAdcSetpoint = 3300;
+                    break;
+
+                case '-':
+                    // change state to settings
+                    bDisplayState = StateSettings;
+                    // decrement setpoint
+                    if(wAdcSetpoint > 0) wAdcSetpoint -= 100;
+                    else wAdcSetpoint = 0;
+                    break;
+            }
+        }
+        
+
         // recalculate
         wAdcValue = (float)(3.3 * pinPot) * 1000.0;
 
         // compare setpoint to actual value
-        if((wAdcValue > wAdcSetpoint) && (bAdcEnableCompare)) busLeds = 0;
-        else busLeds = 0xF;
+        if((wAdcValue > wAdcSetpoint) && (bAdcEnableCompare)) pinBuzzer = 0;
+        else pinBuzzer = 1;
 
         // update stuff
         vDisplayUpdate();
@@ -241,7 +292,7 @@ void vCheckButtons() {
     } else {
         if((bSW2_Timer >= BUTTON_SHORT) && (bSW2_Timer <= BUTTON_LONG)) {
             // event: released from short
-            if(wAdcSetpoint < 3300) wAdcSetpoint += 100;
+            if(wAdcSetpoint < 3300) wAdcSetpoint += 10;
             else wAdcSetpoint = 3300;
         }
         if(bSW2_Timer > BUTTON_LONG) {
@@ -266,7 +317,7 @@ void vCheckButtons() {
     } else {
         if((bSW3_Timer >= BUTTON_SHORT) && (bSW3_Timer <= BUTTON_LONG)) {
             // event: released from short
-            if(wAdcSetpoint > 0) wAdcSetpoint -= 100;
+            if(wAdcSetpoint > 0) wAdcSetpoint -= 10;
             else wAdcSetpoint = 0;
         }
         if(bSW3_Timer > BUTTON_LONG) {
