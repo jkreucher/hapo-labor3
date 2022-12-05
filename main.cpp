@@ -71,6 +71,7 @@ DigitalOut pinDOUT(PIN_DOUT);
 DigitalOut pinSCLK(PIN_SCLK);
 DigitalOut pinLTCH(PIN_LTCH);
 DigitalOut pinBuzzer(PIN_BUZZER);
+AnalogIn pinPot(A0);
 
 
 // prototypes
@@ -87,6 +88,13 @@ int main() {
     busLeds = 0xF;
 
     while(1) {
+        // recalculate
+        int32_t voltage = (float)(3.3 * pinPot) * 1000.0;
+        bDisplayValues[0] = (voltage       ) % 10;
+        bDisplayValues[1] = (voltage /   10) % 10;
+        bDisplayValues[2] = (voltage /  100) % 10;
+        bDisplayValues[3] = (voltage / 1000) % 10;
+
         // update stuff
         vDisplayUpdate();
 
